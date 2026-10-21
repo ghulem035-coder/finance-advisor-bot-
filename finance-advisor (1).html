@@ -1,0 +1,151 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Personal Finance Advisor Bot</title>
+<style>
+:root{--bg:#f6f7f9;--card:#fff;--tx:#1b1f24;--mu:#667085;--bd:#e3e6ea;--ac:#0f766e;--ok:#15803d;--bad:#b42318;--warn:#b45309;color-scheme:light;box-sizing:border-box;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}
+@media (prefers-color-scheme:dark){:root:not([data-theme="light"]){--bg:#111418;--card:#1b2026;--tx:#eceff3;--mu:#9aa4b2;--bd:#2c333b;--ac:#2dd4bf;--ok:#4ade80;--bad:#f87171;--warn:#fbbf24;color-scheme:dark}}
+:root[data-theme="dark"]{--bg:#111418;--card:#1b2026;--tx:#eceff3;--mu:#9aa4b2;--bd:#2c333b;--ac:#2dd4bf;--ok:#4ade80;--bad:#f87171;--warn:#fbbf24;color-scheme:dark}
+*{box-sizing:border-box}html{scroll-padding-top:env(safe-area-inset-top,0px)}
+body{margin:0;background:var(--bg);color:var(--tx);font:15px/1.45 system-ui,-apple-system,"Segoe UI",Roboto,sans-serif}
+main{max-width:640px;margin:0 auto;padding:14px}
+h1{font-size:19px;margin:0}h2{font-size:15px;margin:0 0 8px}
+.top{display:flex;gap:8px;align-items:center;justify-content:space-between;flex-wrap:wrap;margin-bottom:10px}
+.card{background:var(--card);border:1px solid var(--bd);border-radius:12px;padding:12px;margin-bottom:10px}
+.row{display:flex;gap:8px;flex-wrap:wrap}.row>*{flex:1 1 120px}
+input,select,button{font:inherit;color:var(--tx);background:var(--bg);border:1px solid var(--bd);border-radius:8px;padding:8px;min-width:0}
+button{cursor:pointer;background:var(--ac);color:#fff;border:0;font-weight:600}
+button.g{background:var(--bg);color:var(--tx);border:1px solid var(--bd);font-weight:400}
+nav{display:flex;gap:6px;margin-bottom:10px}nav button{flex:1;background:var(--card);color:var(--mu);border:1px solid var(--bd)}nav button.on{background:var(--ac);color:#fff;border-color:var(--ac)}
+.k{display:grid;grid-template-columns:repeat(3,1fr);gap:8px}.k div{background:var(--bg);border-radius:8px;padding:8px;text-align:center}.k b{display:block;font-size:16px}.k span{font-size:12px;color:var(--mu)}
+.bar{height:8px;background:var(--bd);border-radius:4px;overflow:hidden;margin:4px 0 8px}.bar i{display:block;height:100%;background:var(--ac)}.bar i.o{background:var(--bad)}
+.li{display:flex;justify-content:space-between;gap:8px;padding:6px 0;border-bottom:1px solid var(--bd);font-size:14px}.li:last-child{border:0}
+.mu{color:var(--mu);font-size:13px}.ok{color:var(--ok)}.bad{color:var(--bad)}.warn{color:var(--warn)}
+.tip{padding:8px;border-left:3px solid var(--ac);background:var(--bg);border-radius:4px;margin-bottom:6px;font-size:14px}
+.tip.b{border-color:var(--bad)}.tip.w{border-color:var(--warn)}
+.x{background:none;color:var(--mu);padding:0 6px}
+.hid{display:none}
+</style>
+</head>
+<body>
+<main>
+<div class="top"><h1>💰 Finance Advisor Bot</h1>
+<div class="row" style="flex:0 1 auto"><select id="prof" title="Profile"><option value="salaried">Salaried</option><option value="student">Student</option><option value="freelancer">Freelancer</option><option value="household">Household</option></select>
+<input type="month" id="mon"></div></div>
+<nav id="nav"><button data-t="dash" class="on">Dashboard</button><button data-t="add">Add</button><button data-t="plan">Budget</button><button data-t="rep">Report</button></nav>
+
+<section id="dash"></section>
+
+<section id="add" class="hid">
+<div class="card"><h2>Log income</h2><div class="row"><input id="is" placeholder="Source (client, salary…)"><input id="ia" type="number" min="0" step="0.01" placeholder="Amount"><input id="id" type="date"><button id="bi">Add income</button></div></div>
+<div class="card"><h2>Log expense</h2><div class="row"><select id="ec"></select><input id="ea" type="number" min="0" step="0.01" placeholder="Amount"><input id="ed" type="date"><input id="en" placeholder="Note (optional)"><button id="be">Add expense</button></div></div>
+<div class="card"><h2>Savings goal</h2><div class="row"><input id="gn" placeholder="Goal name"><input id="gt" type="number" min="0" placeholder="Target"><input id="gs" type="number" min="0" placeholder="Saved so far"><button id="bg">Save goal</button></div></div>
+<div class="card"><h2>This month’s entries</h2><div id="ent"></div></div>
+<button class="g" id="demo">Load demo data</button> <button class="g" id="clr">Clear all</button>
+</section>
+
+<section id="plan" class="hid"></section>
+<section id="rep" class="hid"></section>
+</main>
+<script>
+const CATS=["Rent","Food","Transport","Utilities","Entertainment","Education","Healthcare","Other"];
+const RULES={
+salaried:{Rent:30,Food:15,Transport:10,Utilities:8,Entertainment:7,Education:0,Healthcare:5,Other:5,s:20},
+student:{Rent:30,Food:25,Transport:10,Utilities:5,Entertainment:10,Education:10,Healthcare:0,Other:0,s:10},
+freelancer:{Rent:28,Food:14,Transport:8,Utilities:7,Entertainment:5,Education:3,Healthcare:5,Other:5,s:25},
+household:{Rent:25,Food:20,Transport:8,Utilities:10,Entertainment:5,Education:12,Healthcare:8,Other:2,s:10}};
+const TIPS={Rent:"Consider a roommate, renegotiating, or a cheaper lease.",Food:"Plan weekly meals, cook in batches, and cut delivery orders.",Transport:"Combine trips, use passes or carpool.",Utilities:"Check subscriptions and unplug idle devices; compare providers.",Entertainment:"Set a weekly fun cap and rotate paid subscriptions.",Education:"Look for used books, free courses and bulk fees.",Healthcare:"Use generics and preventive care to avoid bigger bills.",Other:"Review small purchases; wait 24 hours before non-essentials."};
+let S={profile:"salaried",income:[],exp:[],goal:null};
+try{const r=localStorage.getItem("pfab");if(r)S=Object.assign(S,JSON.parse(r))}catch(e){}
+const $=i=>document.getElementById(i);
+const save=()=>{try{localStorage.setItem("pfab",JSON.stringify(S))}catch(e){}};
+const fm=n=>"$"+(Math.round(n*100)/100).toLocaleString(undefined,{minimumFractionDigits:0,maximumFractionDigits:2});
+const esc=s=>String(s).replace(/[&<>"]/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]));
+const today=new Date().toISOString().slice(0,10);
+$("mon").value=today.slice(0,7);$("id").value=today;$("ed").value=today;
+$("prof").value=S.profile;
+$("ec").innerHTML=CATS.map(c=>`<option>${c}</option>`).join("");
+const mk=()=>$("mon").value;
+const inM=(a,m)=>a.filter(x=>x.date.slice(0,7)===m);
+const sum=a=>a.reduce((t,x)=>t+x.amt,0);
+function prevMonth(m){const [y,mo]=m.split("-").map(Number);const d=new Date(y,mo-2,1);return d.getFullYear()+"-"+String(d.getMonth()+1).padStart(2,"0")}
+function nextMonth(m){const [y,mo]=m.split("-").map(Number);const d=new Date(y,mo,1);return d.toLocaleString(undefined,{month:"long",year:"numeric"})}
+function baseIncome(m){
+ const inc=sum(inM(S.income,m));
+ if(S.profile!=="freelancer")return inc;
+ const ms=[...new Set(S.income.map(x=>x.date.slice(0,7)))].slice(-3);
+ if(ms.length<2)return inc;
+ const avg=ms.reduce((t,k)=>t+sum(inM(S.income,k)),0)/ms.length;
+ return Math.min(inc||avg,avg);
+}
+function analyze(){
+ const m=mk(),inc=sum(inM(S.income,m)),base=baseIncome(m),ex=inM(S.exp,m),spent=sum(ex),R=RULES[S.profile];
+ const cats=CATS.map(c=>{const sp=sum(ex.filter(e=>e.cat===c));const lim=base*R[c]/100;return{c,sp,lim,over:lim>0?sp>lim:sp>0&&R[c]===0}});
+ const saved=inc-spent,rate=inc?saved/inc*100:0,tgt=base*R.s/100;
+ return{m,inc,base,spent,cats,saved,rate,tgt,R};
+}
+function insights(a){
+ const t=[];
+ if(!a.inc){t.push(["w","No income logged for this month yet. Add income to generate a budget."]);return t}
+ a.cats.filter(x=>x.over).sort((x,y)=>(y.sp-y.lim)-(x.sp-x.lim)).forEach(x=>t.push(["b",`${x.c} is over by ${fm(x.sp-x.lim)} (${fm(x.sp)} vs ${fm(x.lim)}). ${TIPS[x.c]}`]));
+ if(a.saved<0)t.push(["b",`You spent ${fm(-a.saved)} more than you earned. Cut discretionary categories first.`]);
+ else if(a.saved<a.tgt)t.push(["w",`Savings of ${fm(a.saved)} are below your ${a.R.s}% target of ${fm(a.tgt)}.`]);
+ else t.push(["","Great work: you met or beat your savings target."]);
+ if(S.profile==="freelancer"){
+  const ms=[...new Set(S.income.map(x=>x.date.slice(0,7)))];
+  if(ms.length>1){const avg=ms.reduce((t2,k)=>t2+sum(inM(S.income,k)),0)/ms.length;
+   if(a.inc<avg*0.8)t.push(["w",`Income this month is ${Math.round((1-a.inc/avg)*100)}% below your average, so saving capacity is reduced.`])}
+  const ef=a.spent*6;t.push(["",`Emergency fund goal: 6 months of expenses ≈ ${fm(ef)}. Set aside part of every high-income month.`]);
+ }
+ if(S.profile==="student"&&a.cats.find(x=>x.c==="Entertainment").over)t.push(["w","Try a fixed weekly cash limit for fun spending."]);
+ if(S.profile==="household"){const top=[...a.cats].sort((x,y)=>y.sp-x.sp)[0];if(top&&top.sp)t.push(["",`Biggest family cost: ${top.c} (${fm(top.sp)}). Review it together.`])}
+ return t;
+}
+function bars(a){return a.cats.filter(x=>x.lim>0||x.sp>0).map(x=>{const p=x.lim?Math.min(100,x.sp/x.lim*100):100;return `<div class="li" style="display:block;border:0;padding:2px 0"><div style="display:flex;justify-content:space-between"><span>${x.c}</span><span class="${x.over?"bad":""}">${fm(x.sp)} / ${fm(x.lim)}</span></div><div class="bar"><i class="${x.over?"o":""}" style="width:${p}%"></i></div></div>`}).join("")}
+function goalHtml(a){
+ const g=S.goal;if(!g)return `<div class="mu">No savings goal yet. Add one in the Add tab.</div>`;
+ const p=Math.min(100,g.target?g.saved/g.target*100:0),left=Math.max(0,g.target-g.saved),mo=a.saved>0?Math.ceil(left/a.saved):null;
+ return `<b>${esc(g.name)}</b><div class="bar"><i style="width:${p}%"></i></div><div class="mu">${fm(g.saved)} of ${fm(g.target)} (${Math.round(p)}%)${left?(mo?` · about ${mo} month(s) at this month’s savings pace`:" · no savings this month to progress"):" · goal reached! 🎉"}</div>`;
+}
+function render(){
+ const a=analyze();
+ $("dash").innerHTML=`<div class="card"><div class="k"><div><b class="ok">${fm(a.inc)}</b><span>Income</span></div><div><b class="bad">${fm(a.spent)}</b><span>Expenses</span></div><div><b class="${a.saved<0?"bad":"ok"}">${fm(a.saved)}</b><span>Saved (${Math.round(a.rate)}%)</span></div></div></div>
+ <div class="card"><h2>Spending vs budget</h2>${a.inc?bars(a):'<div class="mu">Add income to see your budget limits.</div>'}</div>
+ <div class="card"><h2>Advisor insights</h2>${insights(a).map(([c,t])=>`<div class="tip ${c}">${esc(t)}</div>`).join("")}</div>
+ <div class="card"><h2>Savings goal</h2>${goalHtml(a)}</div>`;
+ const R=a.R;
+ $("plan").innerHTML=`<div class="card"><h2>Personalized budget (${S.profile})</h2><div class="mu">Based on ${S.profile==="freelancer"?"a cautious income estimate (lower of this month and your recent average)":"this month’s income"}: ${fm(a.base)}. Target savings ${R.s}%.</div></div>
+ <div class="card">${CATS.filter(c=>R[c]>0).map(c=>`<div class="li"><span>${c} <span class="mu">${R[c]}%</span></span><b>${fm(a.base*R[c]/100)}</b></div>`).join("")}<div class="li"><span>Savings <span class="mu">${R.s}%</span></span><b class="ok">${fm(a.tgt)}</b></div></div>
+ <div class="card"><h2>Saving suggestions</h2>${insights(a).map(([c,t])=>`<div class="tip ${c}">${esc(t)}</div>`).join("")}</div>`;
+ const top=[...a.cats].sort((x,y)=>y.sp-x.sp)[0];
+ const nx=a.cats.filter(x=>x.over).map(x=>`<div class="li"><span>Reduce ${x.c}</span><b>${fm(Math.max(x.lim,x.sp*0.9))}</b></div>`).join("")||'<div class="mu">Keep all categories within their limits.</div>';
+ $("rep").innerHTML=`<div class="card"><h2>Monthly report · ${a.m}</h2>
+ <div class="li"><span>Total income</span><b>${fm(a.inc)}</b></div><div class="li"><span>Total expenses</span><b>${fm(a.spent)}</b></div><div class="li"><span>Savings achieved</span><b class="${a.saved<0?"bad":"ok"}">${fm(a.saved)}</b></div><div class="li"><span>Savings rate</span><b>${Math.round(a.rate)}% (target ${a.R.s}%)</b></div>${top&&top.sp?`<div class="li"><span>Top category</span><b>${top.c}</b></div>`:""}</div>
+ <div class="card"><h2>Category breakdown</h2>${bars(a)}</div>
+ <div class="card"><h2>Goals for ${nextMonth(a.m)}</h2><div class="li"><span>Save at least</span><b class="ok">${fm(a.tgt)}</b></div>${nx}</div>
+ <div class="card"><h2>Savings goal</h2>${goalHtml(a)}</div>`;
+ const ents=[...inM(S.income,a.m).map(x=>({...x,k:"income"})),...inM(S.exp,a.m).map(x=>({...x,k:"exp"}))].sort((x,y)=>y.date.localeCompare(x.date));
+ $("ent").innerHTML=ents.length?ents.map(x=>`<div class="li"><span>${x.date.slice(5)} · ${esc(x.k==="income"?x.src||"Income":x.cat+(x.note?" – "+x.note:""))}</span><span class="${x.k==="income"?"ok":"bad"}">${x.k==="income"?"+":"−"}${fm(x.amt)}<button class="x" data-k="${x.k}" data-i="${x.id}">✕</button></span></div>`).join(""):'<div class="mu">Nothing logged this month.</div>';
+}
+const uid=()=>Date.now()+Math.random();
+$("bi").onclick=()=>{const amt=parseFloat($("ia").value);if(!(amt>0))return;S.income.push({id:uid(),date:$("id").value||today,src:$("is").value.trim(),amt});$("ia").value="";$("is").value="";$("mon").value=($("id").value||today).slice(0,7);save();render()};
+$("be").onclick=()=>{const amt=parseFloat($("ea").value);if(!(amt>0))return;S.exp.push({id:uid(),date:$("ed").value||today,cat:$("ec").value,note:$("en").value.trim(),amt});$("ea").value="";$("en").value="";$("mon").value=($("ed").value||today).slice(0,7);save();render()};
+$("bg").onclick=()=>{const t=parseFloat($("gt").value);if(!$("gn").value.trim()||!(t>0))return;S.goal={name:$("gn").value.trim(),target:t,saved:parseFloat($("gs").value)||0};save();render()};
+$("ent").onclick=e=>{const b=e.target.closest("button");if(!b)return;const id=parseFloat(b.dataset.i);if(b.dataset.k==="income")S.income=S.income.filter(x=>x.id!==id);else S.exp=S.exp.filter(x=>x.id!==id);save();render()};
+$("prof").onchange=()=>{S.profile=$("prof").value;save();render()};
+$("mon").onchange=render;
+$("nav").onclick=e=>{const b=e.target.closest("button");if(!b)return;[...$("nav").children].forEach(x=>x.classList.toggle("on",x===b));["dash","add","plan","rep"].forEach(s=>$(s).classList.toggle("hid",s!==b.dataset.t))};
+$("clr").onclick=()=>{if(confirm("Delete all data?")){S={profile:S.profile,income:[],exp:[],goal:null};save();render()}};
+$("demo").onclick=()=>{const m=mk();const d=n=>m+"-"+String(n).padStart(2,"0");
+ const inc=S.profile==="student"?[["Allowance",900]]:S.profile==="freelancer"?[["Client A",1800],["Client B",1100]]:S.profile==="household"?[["Salary 1",3200],["Salary 2",2400]]:[["Salary",4200]];
+ const t=inc.reduce((s,x)=>s+x[1],0);
+ inc.forEach((x,i)=>S.income.push({id:uid(),date:d(1+i),src:x[0],amt:x[1]}));
+ const mul={Rent:.31,Food:.19,Transport:.09,Utilities:.07,Entertainment:.12,Education:.04,Healthcare:.03,Other:.06};
+ CATS.forEach((c,i)=>S.exp.push({id:uid(),date:d(3+i*3),cat:c,note:"demo",amt:Math.round(t*mul[c])}));
+ if(!S.goal)S.goal={name:"Emergency fund",target:3000,saved:600};save();render()};
+render();
+</script>
+</body>
+</html>
